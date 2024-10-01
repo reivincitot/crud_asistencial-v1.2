@@ -1,6 +1,8 @@
 from rest_framework import viewsets
 from .models import Pais, Region, Comuna, Ciudad, Direccion, Provincia
 from .serializers import PaisSerializer, RegionSerializer, ComunaSerializers, CiudadSerializer, DireccionSerializer, ProvinciaSerializers
+from rest_framework.response import Response
+from django.http import JsonResponse
 
 
 class PaisViewSet(viewsets.ModelViewSet):
@@ -26,3 +28,6 @@ class CiudadViewSet(viewsets.ModelViewSet):
 class DireccionViewSet(viewsets.ModelViewSet):
     queryset = Direccion.objects.all()
     serializer_class = DireccionSerializer
+
+def test_connection(request):
+    return JsonResponse({"message": "Connected successfully!"})
