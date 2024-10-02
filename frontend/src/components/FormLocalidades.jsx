@@ -75,8 +75,12 @@ const FormularioLocalidades = () => {
     }
   }, [selectedProvincia, provincias]);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!nuevoPais && !selectedPais) {
+      alert("Debe seleccionar o Ingresar un País");
+      return;
+    }
     const nuevaDireccion = {
       pais: nuevoPais || selectedPais,
       codigoPais: nuevoPais ? nuevoCodigoPais : codigoPais,  // Si es nuevo país, usar el código ingresado
@@ -86,6 +90,23 @@ const FormularioLocalidades = () => {
       comuna: nuevaComuna || selectedComuna,
       ciudad: nuevaCiudad
     };
+    try {
+      // Envío de datos al servidor
+      const response = await instance.post("direcciones/", nuevaDireccion);
+      console.log("Dirección creada: ", response.data)
+      // Limpiar el formulario y mostrar un mensaje de éxito
+      setNuevoPais("");
+      setSelectedPais(null);
+      alert("Dirección creada correctamente");
+    } catch (error) {
+      console.error("Error al enviar los datos", error);
+      if (error.response && error.response.status === 400) {
+        alert("Los datos ingresados no son válidos");
+      } else {
+        alert("Ocurrió un error inesperado. Por favor, inténtelo nuevamente.");
+      }
+    }
+    
 
     console.log("Datos enviados:", nuevaDireccion);
   };
@@ -94,125 +115,75 @@ const FormularioLocalidades = () => {
     <div>
       <h2>Formulario de Dirección</h2>
       <form onSubmit={handleSubmit}>
-        {/* Selección o ingreso de País */}
-        <label htmlFor="pais">País:</label>
-        <select
-          id="pais"
-          onChange={(e) => setSelectedPais(e.target.value)}
-          defaultValue=""
-        >
-          <option value="" disabled>Seleccione un país</option>
-          {paises.map((pais) => (
-            <option key={pais.id} value={pais.id}>
-              {pais.nombre_pais}
-            </option>
-          ))}
-        </select>
-        <input
-          type="text"
-          placeholder="O ingrese un nuevo país"
-          value={nuevoPais}
-          onChange={(e) => {
-            setNuevoPais(e.target.value);
-            setCodigoPais("");  // Limpiar el código si se ingresa un nuevo país
-          }}
-        />
-
-        {/* Mostrar campo de código si se ingresa un nuevo país */}
-        {nuevoPais ? (
-          <>
-            <p>Ingrese el código del nuevo país:</p>
-            <input
-              type="text"
-              placeholder="Código del país"
-              value={nuevoCodigoPais}
-              onChange={(e) => setNuevoCodigoPais(e.target.value)}
+        <div>
+          {/* Selección o Ingreso de un Nuevo País */}
+          <label htmlFor="pais">País:</label>
+          <select
+            id="pais"
+            onChange={(e) => setSelectedPais(e.target.value)}
+            value= {selectedPais || ""}
+            autoComplete="off"
+          >
+            <option value={""}>Seleccione un País</option>
+            {paises.map((pais)=>(
+              <option key={pais.id} value={pais.id}>
+                {pais.nombre_pais}
+              </option>
+            ))}
+          </select>
+          <input
+            type="text"
+            id="nuevoPais"
+            placeholder="O ingrese un un nuevo País"
+            value={nuevoPais}
+            onChange={(e) =>{
+              setNuevoPais(e.target.value);
+              if (e.target.value) setSelectedPais(null); // Limpiar selección si se esta agregando un nuevo país
+            }}
+            autoComplete="off"
             />
-          </>
-        ) : (
-          <p>Código del País: {codigoPais}</p>  // Mostrar el código del país seleccionado
-        )}
-
-        {/* Selección o ingreso de Región */}
-        <label htmlFor="region">Región:</label>
-        <select
-          id="region"
-          onChange={(e) => setSelectedRegion(e.target.value)}
-          defaultValue=""
-        >
-          <option value="" disabled>Seleccione una región</option>
-          {regiones.map((region) => (
-            <option key={region.id} value={region.id}>
-              {region.nombre_region}
-            </option>
-          ))}
-        </select>
-        <input
-          type="text"
-          placeholder="O ingrese una nueva región"
-          value={nuevaRegion}
-          onChange={(e) => setNuevaRegion(e.target.value)}
-        />
-
-        {/* Selección o ingreso de Provincia */}
-        <label htmlFor="provincia">Provincia:</label>
-        <select
-          id="provincia"
-          onChange={(e) => setSelectedProvincia(e.target.value)}
-          defaultValue=""
-        >
-          <option value="" disabled>Seleccione una provincia</option>
-          {provincias.map((provincia) => (
-            <option key={provincia.id} value={provincia.id}>
-              {provincia.nombre_provincia}
-            </option>
-          ))}
-        </select>
-        <input
-          type="text"
-          placeholder="O ingrese una nueva provincia"
-          value={nuevaProvincia}
-          onChange={(e) => setNuevaProvincia(e.target.value)}
-        />
-
-        {/* Mostrar código de provincia */}
-        <p>Código de la Provincia: {codigoProvincia}</p>
-
-        {/* Selección o ingreso de Comuna */}
-        <label htmlFor="comuna">Comuna:</label>
-        <select
-          id="comuna"
-          onChange={(e) => setSelectedComuna(e.target.value)}
-          defaultValue=""
-        >
-          <option value="" disabled>Seleccione una comuna</option>
-          {comunas.map((comuna) => (
-            <option key={comuna.id} value={comuna.id}>
-              {comuna.nombre_comuna}
-            </option>
-          ))}
-        </select>
-        <input
-          type="text"
-          placeholder="O ingrese una nueva comuna"
-          value={nuevaComuna}
-          onChange={(e) => setNuevaComuna(e.target.value)}
-        />
-
-        {/* Campo de Ciudad */}
-        <label htmlFor="ciudad">Ciudad:</label>
-        <input
-          type="text"
-          placeholder="Ingrese una nueva ciudad"
-          value={nuevaCiudad}
-          onChange={(e) => setNuevaCiudad(e.target.value)}
-        />
-
-        {/* Botón de guardar */}
-        <button type="submit">Guardar</button>
+            {/*Mostrar o Ingresar el código del país*/}
+            <label htmlFor="codigoPais">Código del País</label>
+              <input
+                type="text"
+                id="codigoPais"
+                placeholder="O ingrese un Código de País"
+                value={nuevoCodigoPais || codigoPais}
+                onChange={(e) => setNuevoCodigoPais(e.target.value)}
+                autoComplete="off"
+                />
+            <br/>
+            <div>
+              {/* Selección o ingreso de Región*/}
+              <label htmlFor="region">Región:</label>
+                <select
+                  id="region"
+                  onChange={(e) => selectedRegion(e.target.value)}
+                  value={selectedRegion || " "}
+                  autoComplete="off"
+                  >
+                    <option value=""> Seleccione una Región</option>
+                    {regiones.map((region)=>(
+                      <option key={region.id} value={region.id}>
+                        {region.nombre_region}
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    id="nuevaRegion"
+                    type="text"
+                    placeholder="O ingrese una nueva región"
+                    onChange={(e) => setNuevaRegion(e.target.value)}
+                    autoComplete="off"
+                    />
+                    <br/>
+              
+            </div>
+        </div>
       </form>
     </div>
   );
+
 };
 
 export default FormularioLocalidades;
