@@ -1,13 +1,14 @@
 import React from 'react';
 import './App.css';
-import TestConnection from './components/TestConecction';
+import FormularioLocalidades from './components/FormLocalidades';
+import { BrowserRouter as Router, Route, Routes} from 'react-router-dom'
 
 function App() {
   return (
     <div className="App">
       <header className="App-header">
         <h1>bienvenido a mi app</h1>
-        <TestConnection/>
+        <FormularioLocalidades/>
       </header>
     </div>
   );
