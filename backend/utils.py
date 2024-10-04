@@ -1,5 +1,7 @@
 from datetime import date
-from django.shortcuts import render #,redirect
+from django.shortcuts import render
+from rest_framework import serializers
+import re
 
 
 def calcular_edad(fecha_de_nacimiento):
@@ -40,3 +42,38 @@ def manejar_formulario(request, form_class, template_name):
     return render(request, template_name, {'form': form})
 
 
+def validate_nombre(value):
+    """Valida que el nombre no tenga espacios al inicio o al final y solo contenga letras y espacios en el medio"""
+    
+    value=value.strip() # Elimina espacios al principio y al final
+    
+    if not re.match(r'^[a-zA-Z\s]+$', value): # Solo letras y espacios
+        raise serializers.ValidationError("El nombre solo puede contener letras y espacios.")
+    return value
+
+def validate_existe(data, key, context, model):
+    """Valida que se haya seleccionado un campo específico y que no haya duplicados en la base de datos.
+    
+    Args:
+        data: Los datos del serializer.
+        key: La clave del campo a validar.
+        context: Mensaje contextual que se mostrará si falla la validación.
+        model: El modelo que se usará para verificar duplicados.
+        
+    Returns:
+        Los datos sin cambios si la validación pasa.
+        
+    Raises:
+        serializers.ValidationError si la validación falla.
+    """
+    value = data.get(key)
+
+    # Si el valor está vacío, significa que el usuario está creando un nuevo registro
+    if not value:
+        raise serializers.ValidationError(f"Debes seleccionar {context} para crear esta entrada.")
+    
+    # Verificación de duplicados si el valor no es None o vacío
+    if model.objects.filter(nombre=value).exists():
+        raise serializers.ValidationError(f"Ya existe un registro con el nombre '{value}' en la base de datos.")
+    
+    return data

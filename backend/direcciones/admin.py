@@ -1,6 +1,5 @@
 from django.contrib import admin
-from .models import Pais, Region, Comuna, Ciudad, Direccion, Provincia
-
+from .models import Pais, Region, Comuna, Ciudad, Provincia
 
 class PaisAdmin(admin.ModelAdmin):
     list_display = ('id', 'nombre_pais', 'codigo_pais')
@@ -17,9 +16,6 @@ class ComunaAdmin(admin.ModelAdmin):
 class CiudadAdmin(admin.ModelAdmin):
     list_display = ('id', 'nombre_ciudad', 'region')
 
-class DireccionAdmin(admin.ModelAdmin):
-    list_display = ['direccion', 'numero', 'depto', 'villa', 'comuna', 'region']
-
 
 
 # Registro de los modelos en el admin
@@ -28,4 +24,3 @@ admin.site.register(Region, RegionAdmin)
 admin.site.register(Provincia, ProvinciaAdmin)
 admin.site.register(Comuna, ComunaAdmin)
 admin.site.register(Ciudad, CiudadAdmin)
-admin.site.register(Direccion, DireccionAdmin)

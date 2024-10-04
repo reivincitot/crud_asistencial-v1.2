@@ -4,16 +4,16 @@ import instance from "../axiosConfig";
 const FormularioLocalidades = () => {
   const [paises, setPaises] = useState([]);
   const [nuevoPais, setNuevoPais] = useState("");
-  const [codigoPais, setCodigoPais] = useState(""); // Para mostrar el código del país seleccionado
-  const [nuevoCodigoPais, setNuevoCodigoPais] = useState(""); // Para agregar un código nuevo si se agrega un nuevo país
+  const [codigoPais, setCodigoPais] = useState("");
+  const [nuevoCodigoPais, setNuevoCodigoPais] = useState("");
 
   const [regiones, setRegiones] = useState([]);
   const [nuevaRegion, setNuevaRegion] = useState("");
 
   const [provincias, setProvincias] = useState([]);
   const [nuevaProvincia, setNuevaProvincia] = useState("");
-  const [codigoProvincia, setCodigoProvincia] = useState(""); // Para mostrar el código telefónico de la provincia
-  const [nuevoCodigoProvincia, setNuevoCodigoProvincia] = useState(""); // Para agregar un código nuevo si se agrega una nueva provincia
+  const [codigoProvincia, setCodigoProvincia] = useState("");
+  const [nuevoCodigoProvincia, setNuevoCodigoProvincia] = useState("");
 
   const [comunas, setComunas] = useState([]);
   const [nuevaComuna, setNuevaComuna] = useState("");
@@ -25,7 +25,8 @@ const FormularioLocalidades = () => {
   const [selectedProvincia, setSelectedProvincia] = useState(null);
   const [selectedComuna, setSelectedComuna] = useState(null);
 
-  // Obtener todos los países
+  const [error, setError] = useState(""); // Estado para errores
+
   useEffect(() => {
     instance.get("paises/")
       .then((response) => {
@@ -34,24 +35,18 @@ const FormularioLocalidades = () => {
       .catch((error) => console.error("Error fetching countries:", error));
   }, []);
 
-  // Obtener regiones cuando un país es seleccionado
   useEffect(() => {
     if (selectedPais) {
       instance.get(`region/?pais=${selectedPais}`)
         .then((response) => {
           setRegiones(response.data);
           const paisSeleccionado = paises.find(p => p.id === parseInt(selectedPais));
-          if (paisSeleccionado) {
-            setCodigoPais(paisSeleccionado.codigo_pais); // Asignar automáticamente el código del país
-          } else {
-            setCodigoPais("");
-          }
+          setCodigoPais(paisSeleccionado ? paisSeleccionado.codigo_pais : "");
         })
         .catch((error) => console.error("Error fetching regions:", error));
     }
   }, [selectedPais, paises]);
 
-  // Obtener provincias cuando una región es seleccionada
   useEffect(() => {
     if (selectedRegion) {
       instance.get(`provincia/?region=${selectedRegion}`)
@@ -62,59 +57,105 @@ const FormularioLocalidades = () => {
     }
   }, [selectedRegion]);
 
-  // Obtener comunas cuando una provincia es seleccionada
   useEffect(() => {
     if (selectedProvincia) {
       instance.get(`comuna/?provincia=${selectedProvincia}`)
         .then((response) => {
           setComunas(response.data);
           const provinciaSeleccionada = provincias.find(p => p.id === parseInt(selectedProvincia));
-          if (provinciaSeleccionada) {
-            setCodigoProvincia(provinciaSeleccionada.codigo_telefonico_provincia); // Asignar el código de provincia automáticamente
-          } else {
-            setCodigoProvincia("");
-          }
+          setCodigoProvincia(provinciaSeleccionada ? provinciaSeleccionada.codigo_telefonico_provincia : "");
         })
         .catch((error) => console.error("Error fetching comunas:", error));
     }
   }, [selectedProvincia, provincias]);
 
-  // Manejo del submit
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    const nuevaDireccion = {
-      pais: nuevoPais || selectedPais,
-      codigoPais: nuevoPais ? nuevoCodigoPais : codigoPais,
-      region: nuevaRegion || selectedRegion,
-      provincia: nuevaProvincia || selectedProvincia,
-      codigoProvincia: nuevoCodigoProvincia || codigoProvincia,
-      comuna: nuevaComuna || selectedComuna,
-      ciudad: nuevaCiudad,
-    };
-    console.log("Datos enviados:", nuevaDireccion);
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    setError(""); // Resetear el error al inicio
+
+    // Validación de los campos requeridos
     if (!nuevoPais && !selectedPais) {
-      alert("Debe seleccionar o ingresar un país");
-      return;
+        setError("Debe seleccionar o ingresar un país.");
+        return;
     }
 
+    // Obtener el ID del país seleccionado
+    const paisID = nuevoPais ? null : selectedPais; // Si hay un nuevo país, no hay ID seleccionado
+
     try {
-      // Envío de los datos al servidor
-      const response = await instance.post("direccion/", nuevaDireccion);
-      console.log("Dirección localidad creada:", response.data);
-      setNuevoPais("");
-      setSelectedPais(null);
+        // Solo crear el país si hay un nuevo país ingresado
+        if (nuevoPais) {
+            const paisData = {
+                nombre_pais: nuevoPais,
+                codigo_pais: nuevoCodigoPais || '', // Solo si se ha ingresado un nuevo código
+            };
+            console.log("Enviando datos de país:", paisData);
+            const paisResponse = await instance.post("paises/", paisData);
+            console.log("País creado:", paisResponse.data);
+            // Al crear un nuevo país, también debes obtener su ID
+            paisID = paisResponse.data.id; // Suponiendo que el servidor devuelve el nuevo ID del país creado
+        }
+
+        // Crear o asociar la región solo si se ha ingresado una nueva o se ha seleccionado
+        if (nuevaRegion) {
+            const regionData = {
+                nombre_region: nuevaRegion,
+                pais: paisID || selectedPais, // Asociar a la región usando el ID
+            };
+            await instance.post("region/", regionData);
+            console.log("Región creada:", regionData);
+        }
+
+        // Crear o asociar la provincia solo si se ha ingresado una nueva o se ha seleccionado
+        if (nuevaProvincia) {
+            const provinciaData = {
+                nombre_provincia: nuevaProvincia,
+                region: selectedRegion, // Asociar a la provincia usando el ID de la región seleccionada
+            };
+            await instance.post("provincia/", provinciaData); // Cambiado aquí
+            console.log("Provincia creada:", provinciaData);
+        }
+
+        // Crear o asociar la comuna solo si se ha ingresado una nueva o se ha seleccionado
+        if (nuevaComuna) {
+            const comunaData = {
+                nombre_comuna: nuevaComuna,
+                provincia: selectedProvincia, // Asociar a la comuna usando el ID de la provincia seleccionada
+            };
+            await instance.post("comuna/", comunaData); // Cambiado aquí
+            console.log("Comuna creada:", comunaData);
+        }
+
+        // Reiniciar formulario después de enviar
+        setNuevoPais("");
+        setCodigoPais("");
+        setNuevoCodigoPais("");
+        setSelectedPais(null);
+        setRegiones([]);
+        setNuevaRegion("");
+        setSelectedRegion(null);
+        setProvincias([]);
+        setNuevaProvincia("");
+        setSelectedProvincia(null);
+        setComunas([]);
+        setNuevaComuna("");
+        setNuevaCiudad("");
+
     } catch (error) {
-      console.error("Error al crear la dirección:", error);
+        console.error("Error al crear la dirección:", error);
+        setError("Error al crear la dirección. Por favor, intente nuevamente.");
     }
-  };
+};
+
+
   return (
     <div>
       <h2>Formulario de Dirección</h2>
+      {error && <p style={{ color: 'red' }}>{error}</p>} {/* Mensaje de error */}
       <form onSubmit={handleSubmit}>
         {/* Selección o ingreso de País */}
         <div>
           <label htmlFor="pais">País:</label>
-
           <select
             id="pais"
             onChange={(e) => setSelectedPais(e.target.value)}
@@ -127,7 +168,6 @@ const FormularioLocalidades = () => {
               </option>
             ))}
           </select>
-
           <input
             id="nuevoPais"
             type="text"
@@ -135,15 +175,14 @@ const FormularioLocalidades = () => {
             value={nuevoPais}
             onChange={(e) => {
               setNuevoPais(e.target.value);
-              if (e.target.value) setSelectedPais(null); // Limpiar selección si se está agregando un nuevo país
+              if (e.target.value) setSelectedPais(null);
             }}
           />
-          {/* Mostrar o ingresar código del país */}
           <p>Código del País: {codigoPais}</p>
           <input
             id="nuevoCodigoPais"
             type="text"
-            placeholder="Ingrese el codigo telefónico del nuevo País"
+            placeholder="Ingrese el código telefónico del nuevo País"
             value={nuevoCodigoPais}
             onChange={(e) => setNuevoCodigoPais(e.target.value)}
             autoComplete="off"
@@ -154,9 +193,7 @@ const FormularioLocalidades = () => {
 
         <div>
           {/* Selección o ingreso de Región */}
-
           <label htmlFor="region">Región:</label>
-
           <select
             id="region"
             onChange={(e) => setSelectedRegion(e.target.value)}
@@ -169,7 +206,6 @@ const FormularioLocalidades = () => {
               </option>
             ))}
           </select>
-
           <input
             id="nuevaRegion"
             type="text"
@@ -184,9 +220,7 @@ const FormularioLocalidades = () => {
 
         <div>
           {/* Selección o ingreso de Provincia */}
-
           <label htmlFor="provincia">Provincia:</label>
-
           <select
             id="provincia"
             onChange={(e) => setSelectedProvincia(e.target.value)}
@@ -207,11 +241,8 @@ const FormularioLocalidades = () => {
             onChange={(e) => setNuevaProvincia(e.target.value)}
             autoComplete="off"
           />
-
           <br />
-
-          {/* Mostrar o ingresar código de provincia */}
-          <p>Código de telefónico la Provincia: {codigoProvincia}</p>
+          <p>Código telefónico de la Provincia: {codigoProvincia}</p>
           <input
             id="nuevoCodigoProvincia"
             type="text"
@@ -232,7 +263,7 @@ const FormularioLocalidades = () => {
             onChange={(e) => setSelectedComuna(e.target.value)}
             value={selectedComuna || ""}
           >
-            <option value="" disabled>Seleccione una comuna</option>
+            <option value="">Seleccione una comuna</option>
             {comunas.map((comuna) => (
               <option key={comuna.id} value={comuna.id}>
                 {comuna.nombre_comuna}
@@ -251,25 +282,7 @@ const FormularioLocalidades = () => {
 
         <br />
 
-        <div>
-          {/* Campo de Ciudad */}
-          <label htmlFor="ciudad">Ciudad:</label>
-          <input
-            id="ciudad"
-            type="text"            
-            placeholder="Ingrese una nueva ciudad"
-            value={nuevaCiudad}
-            onChange={(e) => setNuevaCiudad(e.target.value)}
-            autoComplete="off"
-          />
-        </div>
-
-        <br />
-
-        <div>
-          {/* Botón de guardar */}
-          <button type="submit">Guardar</button>
-        </div>
+        <button type="submit">Guardar</button>
       </form>
     </div>
   );
