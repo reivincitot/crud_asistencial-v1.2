@@ -13,7 +13,7 @@ from rest_framework.permissions import AllowAny
 from django.http import JsonResponse
 from django.db import IntegrityError
 from rest_framework import status
-
+from rest_framework.decorators import api_view
 
 
 class PaisViewSet(viewsets.ModelViewSet):
@@ -91,3 +91,19 @@ class CiudadViewSet(APIView):
 
 def test_connection(request):
     return JsonResponse({"message": "Connected successfully!"})
+
+@api_view(['POST'])
+def verificar_existencia(request):
+    modelo = request.data.get('modelo') 
+    campo = request.data.get('campo')
+    valor = request.data.get('valor')
+
+    # Validar que se recibieron todos los datos
+    if not modelo or not campo or not valor:
+        return Response({'error': 'Datos incompletos'}, status=400)
+    
+    # verificar si existe el duplicado
+    if verificar_existencia(modelo, campo, valor):
+        return Response({'exists': True, 'nombre':valor})
+
+    return Response({'exists':False})

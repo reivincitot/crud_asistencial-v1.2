@@ -2,7 +2,7 @@ from datetime import date
 from django.shortcuts import render
 from rest_framework import serializers
 import re
-
+from django.apps import apps
 
 def calcular_edad(fecha_de_nacimiento):
     today = date.today()
@@ -77,3 +77,10 @@ def validate_existe(data, key, context, model):
         raise serializers.ValidationError(f"Ya existe un registro con el nombre '{value}' en la base de datos.")
     
     return data
+
+def verificar_duplicado(modelo_nombre, campo, valor):
+    # Obtener el model dinámicamente usando el nombre del modelo
+    Modelo = apps.get_model('direcciones', modelo_nombre)
+    # Verificar di el valor existe en el campo especifico
+    filtro ={campo: valor}
+    return Modelo.objects.filter(**filtro).exists()

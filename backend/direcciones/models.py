@@ -18,9 +18,11 @@ class Pais(models.Model):
 class Region(models.Model):
     nombre_region = models.CharField(max_length=100, unique=True, blank=False)
     pais = models.ForeignKey(Pais, on_delete=models.CASCADE, null=True)
-
+    codigo_telefonico_region = models.CharField(
+        max_length=3, blank=True, null=True, unique=True
+    )
     def __str__(self):
-        return f" Nombre de la Región: {self.nombre_region}, Código telefónico de la Región: {self.codigo_region}"
+        return f" Nombre de la Región: {self.nombre_region}, Código telefónico de la Región: {self.codigo_telefonico_region}"
 
     class Meta:
         verbose_name = "Región"
@@ -31,13 +33,11 @@ class Provincia(models.Model):
     nombre_provincia = models.CharField(
         max_length=100, unique=True, blank=True, null=True
     )
-    codigo_telefonico_provincia = models.CharField(
-        max_length=3, blank=True, null=True, unique=True
-    )
+    
     region = models.ForeignKey(Region, on_delete=models.CASCADE, blank=True, null=True)
 
     def __str__(self):
-        return f"{self.region}, Provincia: {self.nombre_provincia} Código Telefónico de la Provincia: {self.codigo_telefonico_provincia}"
+        return f"{self.region}, Provincia: {self.nombre_provincia}"
 
     class Meta:
         verbose_name = "Provincia"
