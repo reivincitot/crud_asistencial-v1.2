@@ -5,16 +5,16 @@ class PaisAdmin(admin.ModelAdmin):
     list_display = ('id', 'nombre_pais', 'codigo_pais')
 
 class RegionAdmin(admin.ModelAdmin):
-    list_display = ('id', 'nombre_region', 'pais')
+    list_display = ('id', 'nombre_region', 'codigo_telefonico_region', 'pais')
 
 class ProvinciaAdmin(admin.ModelAdmin):
-    list_display = ('id', 'nombre_provincia', 'codigo_telefonico_provincia', 'region')
+    list_display = ('id', 'nombre_provincia', 'region')
 
 class ComunaAdmin(admin.ModelAdmin):
-    list_display = ('id', 'nombre_comuna', 'region')
+    list_display = ('id', 'nombre_comuna', 'provincia')
 
 class CiudadAdmin(admin.ModelAdmin):
-    list_display = ('id', 'nombre_ciudad', 'region')
+    list_display = ('id', 'nombre_ciudad', 'provincia')
 
 
 

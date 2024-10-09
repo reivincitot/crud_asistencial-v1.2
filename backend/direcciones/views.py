@@ -31,7 +31,11 @@ class RegionViewSet(APIView):
     permission_classes = [AllowAny]
 
     def get(self, request):
-        regiones = Region.objects.all()
+        pais_id = request.query_params.get('pais')
+        if pais_id:
+            regiones = Region.objects.filter(pais__id=pais_id)
+        else:
+            regiones = Region.objects.all()
         serializer = RegionSerializer(regiones, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
@@ -46,7 +50,11 @@ class ProvinciaViewSet(APIView):
     permission_classes=[AllowAny]
 
     def get(self, request):
-        provincias = Provincia.objects.all()
+        region_id = request.query_params.get('region')
+        if region_id:
+            provincias = Provincia.objects.filter(region__id=region_id)
+        else:
+            provincias = Provincia.objects.all()
         serializer = ProvinciaSerializers(provincias, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
@@ -62,7 +70,11 @@ class ComunaViewSet(APIView):
     permission_classes=[AllowAny]
 
     def get(self, request):
-        comunas = Comuna.objects.all()
+        provincia_id = request.query_params.get('provincia')
+        if provincia_id:
+            comuna = Comuna.objects.filter(provincia__id=provincia_id)
+        else:
+            comunas = Comuna.objects.all()
         serializers = ComunaSerializers(comunas, many=True)
         return Response(serializers.data, status=status.HTTP_200_OK)
 
@@ -76,8 +88,11 @@ class ComunaViewSet(APIView):
 
 class CiudadViewSet(APIView):
     permission_classes=[AllowAny]
-
     def get(self, request):
+        provincia_id = request.query_params.get('provincia')
+
+        if provincia_id:
+            ciudades = Ciudad.objects.filter(provincia__id=provincia_id)
         ciudades = Ciudad.objects.all()
         serializers = CiudadSerializer(ciudades, many=True)
         return Response(serializers.data, status=status.HTTP_200_OK)

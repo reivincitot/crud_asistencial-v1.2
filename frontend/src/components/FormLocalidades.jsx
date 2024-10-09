@@ -6,18 +6,32 @@ import * as yup from 'yup';
 
 // Definir el esquema de validación con yup
 const schema = yup.object().shape({
-  nuevoPais: yup.string(),
+  nuevoPais: yup.string().required('El nombre del país es obligatorio'),
   nuevoCodigoPais: yup.string().when('nuevoPais', {
     is: (val) => val && val.length > 0,
     then: yup.string().required('El código del país es obligatorio')
-  }),
-  nuevaRegion: yup.string(),
+  }).test('codigo-pais-valido', 'El código del país debe estar acompañado por el nombre del país',
+    (value, context) => {
+      return context.parent.nuevoPais === '' || value !== '';
+    }
+  ),
+
+  nuevaRegion: yup.string().required('El nombre de la región es obligatorio'),
+  nuevoCodigoRegion: yup.string().when('nuevaRegion', {
+    is: (val) => val && val.length > 0,
+    then: yup.string().required('El código de la región es obligatorio')
+  }).test('codigo-region-valido', 'El código de la región debe estar acompañado por el nombre de la región',
+    (value, context) => {
+      return context.parent.nuevaRegion === '' || value !== '';
+    }
+  ),
   nuevaProvincia: yup.string(),
   nuevaComuna: yup.string(),
+  nuevaCiudad: yup.string(),
 });
 
 const FormularioLocalidades = () => {
-  const { register, handleSubmit, setValue, formState: { errors } } = useForm({
+  const { register, handleSubmit, setValue, watch, formState: { errors } } = useForm({
     resolver: yupResolver(schema),
   });
 
@@ -25,12 +39,26 @@ const FormularioLocalidades = () => {
   const [regiones, setRegiones] = useState([]);
   const [provincias, setProvincias] = useState([]);
   const [comunas, setComunas] = useState([]);
+  const [paisExiste, setPaisExiste] = useState(false);
+  const [regionExiste, setRegionExiste] = useState(false);
+  const [provinciaExiste, setProvinciaExiste] = useState(false);
+  const [comunaExiste, setComunaExiste] = useState(false);
+  const [ciudadExiste, setCiudadExiste] = useState(false);
   const [selectedPais, setSelectedPais] = useState(null);
   const [selectedRegion, setSelectedRegion] = useState(null);
   const [selectedProvincia, setSelectedProvincia] = useState(null);
+  const [selectedComuna, setSelectedComuna] = useState(null);
   const [codigoPais, setCodigoPais] = useState('');
-  const [codigoProvincia, setCodigoProvincia] = useState('');
+  const [codigoRegion, setCodigoRegion] = useState('');
   const [error, setError] = useState('');
+
+  const nuevoPais = watch("nuevoPais");
+  const nuevoCodigoPais = watch('nuevoCodigoPais');
+  const nuevaRegion = watch("nuevaRegion");
+  const nuevoCodigoRegion = watch("nuevoCodigoRegion");
+  const nuevaProvincia = watch("nuevaProvincia");
+  const nuevaComuna = watch("nuevaComuna");
+  const nuevaCiudad = watch("nuevaCiudad");
 
   // Obtener países al cargar el componente
   useEffect(() => {
@@ -41,221 +69,246 @@ const FormularioLocalidades = () => {
       .catch((error) => console.error("Error fetching countries:", error));
   }, []);
 
+  // Verificación de país duplicado en tiempo real
+  useEffect(() => {
+    if (nuevoPais && nuevoPais.length > 0) {
+      instance.get(`paises/nombre_pais=${nuevoPais}`)
+        .then((response) => {
+          setPaisExiste(response.data.length > 0);
+        })
+        .catch((error) => console.error("Error verificando país:", error));
+    } else {
+      setPaisExiste(false);
+    }
+  }, [nuevoPais]);
+
+  // Verificación de región duplicada en tiempo real
+  useEffect(() => {
+    if (nuevaRegion && nuevaRegion.length > 0) {
+      instance.get(`region/nombre_region=${nuevaRegion}`)
+      .then((response) => {
+        setRegionExiste(response.data.length > 0);
+      })
+      .catch((error) => console.error("Error verificando región:",error));
+    } else {
+      setRegionExiste(false);
+    }
+  }, [nuevaRegion]);
+
+  // Verificación de comuna duplicada en tiempo real
+  useEffect(() => {
+    if (nuevaComuna && nuevaComuna.length > 0) {
+      instance.get(`comuna/nombre_comuna=${nuevaComuna}`)
+      .then((response) => {
+        setComunaExiste(response.data.length > 0);
+      })
+      .catch((error) => console.error("Error verificando comuna:", error));
+    } else {
+      setComunaExiste(false)
+    }
+  },[nuevaComuna]);
+
+  // Verificación de ciudad duplicada en tiempo real
+  useEffect(() => {
+    if (nuevaCiudad && nuevaCiudad.length > 0) {
+      instance.get(`ciudad/nombre_ciudad=${nuevaCiudad}`)
+      .then((response) => {
+        setCiudadExiste(response.data.length > 0);
+      })
+      .catch((error) => console.error("Error verificando ciudad:", error));
+    } else {
+      setCiudadExiste(false);
+    }
+  },[nuevaCiudad]);
+
   // Obtener regiones cuando se selecciona un país
   useEffect(() => {
     if (selectedPais) {
       instance.get(`region/?pais=${selectedPais}`)
         .then((response) => {
-          setRegiones(response.data);
+          const regionesFiltradas = response.data.filter(region => region.pais === parseInt(selectedPais));
+          setRegiones(regionesFiltradas);
           const paisSeleccionado = paises.find(p => p.id === parseInt(selectedPais));
           setCodigoPais(paisSeleccionado ? paisSeleccionado.codigo_pais : "");
         })
         .catch((error) => console.error("Error fetching regions:", error));
+    } else {
+      setRegiones([]);
+      setCodigoPais('');
     }
   }, [selectedPais, paises]);
 
   // Obtener provincias cuando se selecciona una región
   useEffect(() => {
     if (selectedRegion) {
-      instance.get(`provincia/?region=${selectedRegion}`)
+      instance.get(`provincia/?region=${selectedRegion}/detalles`)
         .then((response) => {
-          setProvincias(response.data);
+          const provinciasFiltradas = response.data.filter(provincia => provincia.region === parseInt(selectedRegion));
+          setProvincias(provinciasFiltradas);
+          const regionSeleccionada = regiones.find(r => r.id === parseInt(selectedRegion));
+          setCodigoRegion(regionSeleccionada ? regionSeleccionada.codigo_telefonico_region : ""); // Código telefónico de la región
         })
         .catch((error) => console.error("Error fetching provinces:", error));
+    } else {
+      setProvincias([]);
     }
-  }, [selectedRegion]);
+  }, [selectedRegion, regiones]);
 
   // Obtener comunas cuando se selecciona una provincia
   useEffect(() => {
     if (selectedProvincia) {
-      instance.get(`comuna/?provincia=${selectedProvincia}`)
+      instance.get(`comuna/?provincia=${selectedProvincia}/detalles`)
         .then((response) => {
-          setComunas(response.data);
-          const provinciaSeleccionada = provincias.find(p => p.id === parseInt(selectedProvincia));
-          setCodigoProvincia(provinciaSeleccionada ? provinciaSeleccionada.codigo_telefonico_provincia : "");
+          const {region, pais} = response.data;
+          setSelectedRegion(region.id);
+          setSelectedPais(pais.id);
+          setCodigoPais(pais.codigo_pais);
+          setCodigoRegion(region.codigo);
         })
         .catch((error) => console.error("Error fetching comunas:", error));
+    } else {
+      setSelectedRegion(null);
+      setSelectedPais(null);
+      setCodigoPais('');
+      setCodigoRegion('');
     }
-  }, [selectedProvincia, provincias]);
+  }, [selectedProvincia]);
+
+  // Autoselecciona país, región y provincia al elegir una comuna
+  useEffect(() => {
+    if (selectedComuna) {
+      instance.get(`comuna/${selectedComuna}/detalles`)
+        .then((response) => {
+          const { provincia, region, pais } = response.data;
+          setSelectedProvincia(provincia.id);
+          setSelectedRegion(region.id);
+          setSelectedPais(pais.id);
+          setCodigoPais(pais.codigo_pais);
+          setCodigoRegion(region.codigo_telefonico_region);
+        })
+        .catch((error) => console.error("Error fetching comuna details:", error));
+    } else {
+      setSelectedProvincia(null);
+      setSelectedRegion(null);
+      setSelectedPais(null);
+      setCodigoPais('');
+      setCodigoRegion('');
+    }
+  }, [selectedComuna]);
 
   // Manejo del envío del formulario usando react-hook-form
   const onSubmit = async (data) => {
     try {
-      // Solo crear el país si hay un nuevo país ingresado
-      if (data.nuevoPais) {
-        const paisData = {
-          nombre_pais: data.nuevoPais,
-          codigo_pais: data.nuevoCodigoPais || '',
-        };
-        await instance.post('http://127.0.0.1:8000/api/paises/', paisData);
+      if (!ciudadExiste) {
+        const ciudadData = { nombre_ciudad: data.nuevaCiudad };
+        await instance.post("ciudad/", ciudadData);
+      } else {
+        setError("La ciudad ya está registrada.");
+        return;
       }
-      // Crear o asociar la región
-      if (data.nuevaRegion) {
-        const regionData = {
-          nombre_region: data.nuevaRegion,
-          pais: selectedPais,
-        };
-        await instance.post("region/", regionData);
-      }
-
-      // Crear o asociar la provincia
-      if (data.nuevaProvincia) {
-        const provinciaData = {
-          nombre_provincia: data.nuevaProvincia,
-          region: selectedRegion,
-        };
-        await instance.post("provincia/", provinciaData);
-      }
-
-      // Crear o asociar la comuna
-      if (data.nuevaComuna) {
-        const comunaData = {
-          nombre_comuna: data.nuevaComuna,
-          provincia: selectedProvincia,
-        };
-        await instance.post("comuna/", comunaData);
-      }
-
-      // Limpiar el formulario después del envío
       setValue('nuevoPais', '');
       setValue('nuevoCodigoPais', '');
       setValue('nuevaRegion', '');
       setValue('nuevaProvincia', '');
       setValue('nuevaComuna', '');
-      setSelectedPais(null);
-      setSelectedRegion(null);
-      setSelectedProvincia(null);
-      setRegiones([]);
-      setProvincias([]);
-      setComunas([]);
+      setValue('nuevaCiudad', '');
+      setError('');
     } catch (error) {
-      console.error("Error al enviar el formulario:", error);
-      setError("Error al enviar los datos. Por favor, intente nuevamente.");
+      console.error("Error submitting form:", error);
     }
   };
 
   return (
-    <div>
-      <h2>Formulario de Dirección</h2>
-      {error && <p style={{ color: 'red' }}>{error}</p>} {/* Mensaje de error */}
-      <form onSubmit={handleSubmit(onSubmit)}>
-        {/* Selección o ingreso de País */}
-        <div>
-          <label htmlFor="pais">País:</label>
-          <select
-            id="pais"
-            onChange={(e) => setSelectedPais(e.target.value)}
-            value={selectedPais || ""}
-          >
-            <option value="">Seleccione un país</option>
-            {paises.map((pais) => (
-              <option key={pais.id} value={pais.id}>
-                {pais.nombre_pais}
-              </option>
-            ))}
-          </select>
-          <input
-            {...register("nuevoPais")}
-            id="nuevoPais"
-            type="text"
-            placeholder="O ingrese un nuevo país"
-          />
-          <p>Código del País: {codigoPais}</p>
-          <input
-            {...register("nuevoCodigoPais")}
-            id="nuevoCodigoPais"
-            type="text"
-            placeholder="Ingrese el código telefónico del nuevo País"
-          />
-          {errors.nuevoCodigoPais && <p>{errors.nuevoCodigoPais.message}</p>}
-        </div>
+    <form onSubmit={handleSubmit(onSubmit)}>
+      {/* Formulario para País */}
+      <div>
+        <label>Nombre del País</label>
+        <input
+          type="text"
+          {...register("nuevoPais")}
+          placeholder="Nombre del País"
+          onChange={(e) => setSelectedPais(e.target.value)}
+        />
+        {errors.nuevoPais && <span>{errors.nuevoPais.message}</span>}
+        {paisExiste && <span>El país ya está registrado</span>}
+      </div>
+      <div>
+        <label>Código del País</label>
+        <input
+          type="text"
+          {...register("nuevoCodigoPais")}
+          value={codigoPais}
+          placeholder="Código del País"
+        />
+        {errors.nuevoCodigoPais && <span>{errors.nuevoCodigoPais.message}</span>}
+      </div>
 
-        <br />
+      {/* Formulario para Región */}
+      <div>
+        <label>Nombre de la Región</label>
+        <input
+          type="text"
+          {...register("nuevaRegion")}
+          placeholder="Nombre de la Región"
+          onChange={(e) => setSelectedRegion(e.target.value)}
+        />
+        {errors.nuevaRegion && <span>{errors.nuevaRegion.message}</span>}
+        {regionExiste && <span>La región ya está registrada</span>}
+      </div>
+      <div>
+        <label>Código de la Región</label>
+        <input
+          type="text"
+          {...register("nuevoCodigoRegion")}
+          value={codigoRegion}
+          placeholder="Código de la Región"
+        />
+        {errors.nuevoCodigoRegion && <span>{errors.nuevoCodigoRegion.message}</span>}
+      </div>
 
-        {/* Selección o ingreso de Región */}
-        <div>
-          <label htmlFor="region">Región:</label>
-          <select
-            id="region"
-            onChange={(e) => setSelectedRegion(e.target.value)}
-            value={selectedRegion || ""}
-          >
-            <option value="">Seleccione una región</option>
-            {regiones.map((region) => (
-              <option key={region.id} value={region.id}>
-                {region.nombre_region}
-              </option>
-            ))}
-          </select>
-          <input
-            {...register("nuevaRegion")}
-            id="nuevaRegion"
-            type="text"
-            placeholder="O ingrese una nueva región"
-          />
-        </div>
+      {/* Formulario para Provincia */}
+      <div>
+        <label>Nombre de la Provincia</label>
+        <input
+          type="text"
+          {...register("nuevaProvincia")}
+          placeholder="Nombre de la Provincia"
+          onChange={(e) => setSelectedProvincia(e.target.value)}
+        />
+        {errors.nuevaProvincia && <span>{errors.nuevaProvincia.message}</span>}
+        {provinciaExiste && <span>La provincia ya está registrada</span>}
+      </div>
 
-        <br />
+      {/* Formulario para Comuna */}
+      <div>
+        <label>Nombre de la Comuna</label>
+        <input
+          type="text"
+          {...register("nuevaComuna")}
+          placeholder="Nombre de la Comuna"
+          onChange={(e) => setSelectedComuna(e.target.value)}
+        />
+        {errors.nuevaComuna && <span>{errors.nuevaComuna.message}</span>}
+        {comunaExiste && <span>La comuna ya está registrada</span>}
+      </div>
 
-        {/* Selección o ingreso de Provincia */}
-        <div>
-          <label htmlFor="provincia">Provincia:</label>
-          <select
-            id="provincia"
-            onChange={(e) => setSelectedProvincia(e.target.value)}
-            value={selectedProvincia || ""}
-          >
-            <option value="">Seleccione una provincia</option>
-            {provincias.map((provincia) => (
-              <option key={provincia.id} value={provincia.id}>
-                {provincia.nombre_provincia}
-              </option>
-            ))}
-          </select>
-          <input
-            {...register("nuevaProvincia")}
-            id="nuevaProvincia"
-            type="text"
-            placeholder="O ingrese una nueva provincia"
-          />
-          <p>Código telefónico de la Provincia: {codigoProvincia}</p>
-          <input
-            {...register("nuevoCodigoProvincia")}
-            id="nuevoCodigoProvincia"
-            type="text"
-            placeholder="Ingrese código telefónico de la provincia"
-          />
-        </div>
+      {/* Formulario para Ciudad */}
+      <div>
+        <label>Nombre de la Ciudad</label>
+        <input
+          type="text"
+          {...register("nuevaCiudad")}
+          placeholder="Nombre de la Ciudad"
+        />
+        {errors.nuevaCiudad && <span>{errors.nuevaCiudad.message}</span>}
+        {ciudadExiste && <span>La ciudad ya está registrada</span>}
+      </div>
 
-        <br />
+      <button type="submit">Guardar</button>
+      <button type="button" onClick={() => window.location.href = "/"}>Ir al Inicio</button>
 
-        {/* Selección o ingreso de Comuna */}
-        <div>
-          <label htmlFor="comuna">Comuna:</label>
-          <select
-            id="comuna"
-            onChange={(e) => setSelectedComuna(e.target.value)}
-            value={selectedComuna || ""}
-          >
-            <option value="">Seleccione una comuna</option>
-            {comunas.map((comuna) => (
-              <option key={comuna.id} value={comuna.id}>
-                {comuna.nombre_comuna}
-              </option>
-            ))}
-          </select>
-          <input
-            {...register("nuevaComuna")}
-            id="nuevaComuna"
-            type="text"
-            placeholder="O ingrese una nueva comuna"
-          />
-        </div>
-
-        <br />
-        <button type="submit">Enviar</button>
-      </form>
-    </div>
+      {error && <p>{error}</p>}
+    </form>
   );
 };
 

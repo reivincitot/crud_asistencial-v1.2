@@ -46,10 +46,10 @@ class Provincia(models.Model):
 
 class Comuna(models.Model):
     nombre_comuna = models.CharField(max_length=100, unique=True, blank=False)
-    region = models.ForeignKey(Region, on_delete=models.CASCADE, null=True, blank=True)
+    provincia = models.ForeignKey(Provincia, on_delete=models.CASCADE, null=True, blank=True)
 
     def __str__(self):
-        return f"{self.nombre_comuna}, {self.region}"
+        return f"{self.nombre_comuna}, {self.provincia}"
 
     class Meta:
         verbose_name = "Comuna"
@@ -58,10 +58,10 @@ class Comuna(models.Model):
 
 class Ciudad(models.Model):
     nombre_ciudad = models.CharField(max_length=100, unique=True)
-    region = models.ForeignKey(Region, on_delete=models.CASCADE, blank=True, null=True)
+    provincia = models.ForeignKey(Provincia, on_delete=models.CASCADE, blank=True, null=True)
 
     def __str__(self):
-        return f"{self.region}, {self.nombre_ciudad}"
+        return f"{self.provincia}, {self.nombre_ciudad}"
 
     class Meta:
         verbose_name = "Ciudad"
