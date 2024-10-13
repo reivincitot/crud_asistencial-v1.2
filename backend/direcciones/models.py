@@ -42,8 +42,8 @@ class Region(models.Model):
     Métodos:
         __str__(): Devuelve una representación legible del objeto.
     """
-    nombre_region = models.CharField(max_length=100, unique=True, blank=False)
-    pais = models.ForeignKey(Pais, on_delete=models.CASCADE, null=True)
+    nombre_region = models.CharField(max_length=100, unique=True, blank=False, db_index=True)
+    pais = models.ForeignKey(Pais, on_delete=models.CASCADE, null=True, db_index=True)
     codigo_telefonico_region = models.CharField(
         max_length=3, blank=True, null=True, unique=True
     )
@@ -72,11 +72,8 @@ class Provincia(models.Model):
         __str__(): Devuelve una representación legible del objeto.
     """
 
-    nombre_provincia = models.CharField(
-        max_length=100, unique=True, blank=True, null=True
-    )
-    
-    region = models.ForeignKey(Region, on_delete=models.CASCADE, blank=True, null=True)
+    nombre_provincia = models.CharField(max_length=100, unique=True, blank=True, null=True, db_index=True)    
+    region = models.ForeignKey(Region, on_delete=models.CASCADE, blank=True, null=True, db_index=True)
 
     def save(self, *args, **kwargs):
         self.nombre_provincia = self.nombre_provincia.lower()
@@ -102,8 +99,8 @@ class Comuna(models.Model):
         __str__(): Devuelve una representación legible del objeto.
     """
 
-    nombre_comuna = models.CharField(max_length=100, unique=True, blank=False)
-    provincia = models.ForeignKey(Provincia, on_delete=models.CASCADE, null=True, blank=True)
+    nombre_comuna = models.CharField(max_length=100, unique=True, blank=False, db_index=True)
+    provincia = models.ForeignKey(Provincia, on_delete=models.CASCADE, null=True, blank=True, db_index=True)
 
     def save(self, *args, **kwargs):
         self.nombre_comuna = self.nombre_comuna.lower()
