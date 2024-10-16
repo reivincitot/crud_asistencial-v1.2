@@ -7,15 +7,13 @@ from .views import (
     ProvinciaViewSet,
 )
 from django.urls import path
-from . import views
+
 
 
 router = DefaultRouter()
 router.register(r"paises", PaisViewSet)
 
-
 urlpatterns = [
-    path("test/", views.test_connection, name="test_connection"),
     path('region/', RegionViewSet.as_view(), name='region-list'),
     path('provincia/', ProvinciaViewSet.as_view(), name='provincia-list'),
     path('comuna/', ComunaViewSet.as_view(), name='comuna-list'),

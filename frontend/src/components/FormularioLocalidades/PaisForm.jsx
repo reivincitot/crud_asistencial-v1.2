@@ -1,106 +1,86 @@
 import React, { useEffect, useState } from "react";
-import { useForm } from "react-hook-form";
-import { capitalizarPalabras } from './helpers';
-import instance from "../axiosConfig";
+import { verificarPais, verificarCodigoPais } from "../../utils/verificarDuplicados";
+import instance from "../../axiosConfig";
 
-const PaisForm = () => {
+const PaisForm = ({ register, errors, setValue, clearErrors, setPaisSeleccionado, codigoPaisSeleccionado, setCodigoPaisSeleccionado }) => {
   const [paises, setPaises] = useState([]);
   const [paisExiste, setPaisExiste] = useState(false);
-  const [codigoPais, setCodigoPais] = useState("");
+  const [existeCodigoPais, setExisteCodigoPais] = useState(false);
 
-  const { register, handleSubmit, setValue, formState: { errors }, watch } = useForm();
-
-  const nuevoPais = watch("nuevoPais");
-
-  // Obtener países al cargar el componente
   useEffect(() => {
+    // Obtener países al cargar el componente
     instance.get("paises/")
-      .then((response) => {
-        setPaises(response.data);
-      })
+      .then((response) => setPaises(response.data))
       .catch((error) => console.error("Error fetching countries:", error));
   }, []);
 
-  // Verificación de país duplicado en tiempo real
-  useEffect(() => {
-    if (nuevoPais && nuevoPais.length > 0) {
-      instance.get(`paises/nombre_pais=${nuevoPais}`)
-        .then((response) => {
-          setPaisExiste(response.data.length > 0);
-        })
-        .catch((error) => console.error("Error verificando país:", error));
+  const manejarSeleccionPais = (e) => {
+    const paisId = e.target.value;
+    if (paisId) {
+      const pais = paises.find(p => p.id === parseInt(paisId));
+      setPaisSeleccionado(pais.nombre_pais); // Actualizar el estado en FormularioLocalidades
+      setCodigoPaisSeleccionado(pais.codigo_pais); // Actualizar el código del país
+      setValue("nuevoPais", pais.nombre_pais);  
+      setValue("nuevoCodigoPais", pais.codigo_pais);
+      clearErrors("nuevoPais");
+      clearErrors("nuevoCodigoPais");
     } else {
-      setPaisExiste(false);
-    }
-  }, [nuevoPais]);
-
-  const onSubmit = async (data) => {
-    try {
-      const formData = {
-        nuevoPais: data.nuevoPais.toLowerCase(),
-        nuevoCodigoPais: data.nuevoCodigoPais,
-      };
-
-      // Aquí haces la petición al servidor para guardar el nuevo país.
-      await instance.post("paises/", formData);
-
-      // Limpiar los campos después de enviar
+      setPaisSeleccionado(""); // Restablecer si no se selecciona un país
+      setCodigoPaisSeleccionado(""); // Restablecer el código del país
       setValue("nuevoPais", "");
       setValue("nuevoCodigoPais", "");
-      setPaisExiste(false);
-    } catch (error) {
-      console.error("Error al guardar el país:", error);
     }
   };
 
+  const handlePaisChange = async (e) => {
+    const nuevoPais = e.target.value;
+    setValue("nuevoPais", nuevoPais);
+    const existe = await verificarPais(nuevoPais); // Utilizamos la función centralizada
+    setPaisExiste(existe);
+  };
+
+  const handleCodigoPaisChange = async (e) => {
+    const nuevoCodigoPais = e.target.value;
+    setValue("nuevoCodigoPais", nuevoCodigoPais);
+    const existe = await verificarCodigoPais(nuevoCodigoPais); // Utilizamos la función centralizada
+    setExisteCodigoPais(existe);
+  };
+
   return (
-    <form onSubmit={handleSubmit(onSubmit)}>
-      {/* Formulario para País */}
-      <div>
-        <label>Nombre del País</label>
-        <input
-          id="nuevoPais"
-          type="text"
-          {...register("nuevoPais", { required: "El nombre del país es obligatorio" })}
-          value={capitalizarPalabras(nuevoPais || "")}
-          placeholder="Nombre del País"
-          onChange={(e) => setValue("nuevoPais", e.target.value)}
-        />
-        {errors.nuevoPais && <span>{errors.nuevoPais.message}</span>}
-        {paisExiste && <span>El país ya está registrado</span>}
-      </div>
+    <div>
+      <label>Seleccionar País</label>
+      <select onChange={manejarSeleccionPais}>
+        <option value="">-- Selecciona un país --</option>
+        {paises.map((pais) => (
+          <option key={pais.id} value={pais.id}>
+            {pais.nombre_pais} {/* No es necesario formatear manualmente aquí */}
+          </option>
+        ))}
+      </select>
 
-      {/* Selección de País (si es necesario un select) */}
-      <div>
-        <label>Seleccionar País</label>
-        <select
-          id="selectedPais"
-          onChange={(e) => setValue("nuevoPais", e.target.value)}
-          value={nuevoPais || ""}
-        >
-          <option value="">Selecciona un país</option>
-          {paises.map((pais) => (
-            <option key={pais.id} value={pais.nombre}>
-              {pais.nombre}
-            </option>
-          ))}
-        </select>
-      </div>
+      {/* Mostrar el código del país seleccionado */}
+      {codigoPaisSeleccionado && <p>Código País: {codigoPaisSeleccionado}</p>}
 
-      <div>
-        <label>Código del País</label>
-          <p>Código país: {codigoPais}</p>
-        <input
-          id="nuevoCodigoPais"
-          type="text"
-          {...register("nuevoCodigoPais", { required: "El código del país es obligatorio" })}
-          value={codigoPais}
-          placeholder="Código del País"
-          onChange={(e) => setCodigoPais(e.target.value)}
-        />
-        {errors.nuevoCodigoPais && <span>{errors.nuevoCodigoPais.message}</span>}
-      </div>
-    </form>
+      <label>Nombre del País</label>
+      <input
+        {...register("nuevoPais", { required: "El nombre del país es obligatorio" })}
+        placeholder="Nombre del País"
+        onChange={handlePaisChange}
+        disabled={codigoPaisSeleccionado !== ""}
+      />
+      {errors.nuevoPais && <span>{errors.nuevoPais.message}</span>}
+      {paisExiste && <span>El país ya está registrado</span>}
+
+      <label>Código del País</label>
+      <input
+        {...register("nuevoCodigoPais", { required: "El código del país es obligatorio" })}
+        placeholder="Código del País"
+        onChange={handleCodigoPaisChange}
+        disabled={codigoPaisSeleccionado !== ""}
+      />
+      {errors.nuevoCodigoPais && <span>{errors.nuevoCodigoPais.message}</span>}
+      {existeCodigoPais && <span>El código del país ya está registrado</span>}
+    </div>
   );
 };
 

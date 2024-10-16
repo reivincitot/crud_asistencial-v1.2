@@ -12,7 +12,7 @@ from .serializers import (
 from rest_framework.permissions import AllowAny
 from django.http import JsonResponse
 from django.db import IntegrityError
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, action
 
 
 class PaisViewSet(viewsets.ModelViewSet):
@@ -41,6 +41,17 @@ class PaisViewSet(viewsets.ModelViewSet):
         request.data['nombre_pais'] = request.data['nombre_pais'].lower()
         return super.update(request, *args, **kwargs)
 
+    @action(detail=True, methods=['get'], url_path='regiones', url_name='list_regions')
+    def list_regions(self, request, pk=None):
+        """
+        Acción personalizada para listar las regiones asociadas a un país específico.
+        Se accede a través de /paises/{id}/regiones/
+        """
+        pais = self.get_object()
+        regiones = Region.objects.filter(pais=pais)
+        serializer = RegionSerializer(regiones, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
 class RegionViewSet(APIView):
     """
     Vista para manejar las operaciones CRUD del modelo Region.
@@ -58,8 +69,17 @@ class RegionViewSet(APIView):
             regiones = Region.objects.filter(pais__id=pais_id)
         else:
             regiones = Region.objects.all()
-        serializer = RegionSerializer(regiones, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        
+        regiones_data= []
+        for region in regiones:
+            serializer = RegionSerializer(region)
+            pais_serializer = PaisSerializer(region.pais)
+            region_data = serializer.data
+            region_data['pais'] = pais_serializer.data
+            regiones_data.append(region_data)
+
+        return Response(regiones_data, status=status.HTTP_200_OK)
+    
 
     def post(self, request):
         serializer = RegionSerializer(data=request.data)
@@ -87,8 +107,21 @@ class ProvinciaViewSet(APIView):
             provincias = Provincia.objects.filter(region__id=region_id)
         else:
             provincias = Provincia.objects.all()
-        serializer = ProvinciaSerializers(provincias, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        
+
+        provincias_data=[]
+        for provincia in provincias:
+            serializer = ProvinciaSerializers(provincia)
+            region_serializer = RegionSerializer(provincia.region)
+            pais_serializer = PaisSerializer(provincia.region.pais)
+            provincia_data = serializer.data
+            provincia_data['region'] = region_serializer.data
+            provincia_data['pais'] = pais_serializer.data
+            provincias_data.append(provincias_data)
+
+        return Response(provincias_data, status=status.HTTP_200_OK)
+
+
 
     def post(self, request):
         serializer = ProvinciaSerializers(data=request.data)
@@ -117,8 +150,20 @@ class ComunaViewSet(APIView):
             comunas = Comuna.objects.filter(provincia__id=provincia_id)
         else:
             comunas = Comuna.objects.all()
-        serializers = ComunaSerializers(comunas, many=True)
-        return Response(serializers.data, status=status.HTTP_200_OK)
+        
+        comunas_data=[]
+        for comuna in comunas:
+            serializer = ComunaSerializers(comuna)
+            provincia_serializer = ProvinciaSerializers(comuna.provincia)
+            region_serializer = RegionSerializer(comuna.provincia.region)
+            pais_serializer = PaisSerializer(comuna.provincia.region.pais)
+            comuna_data = serializer.data
+            comuna_data['provincia'] = provincia_serializer.data
+            comuna_data['region'] = region_serializer.data
+            comuna_data['pais'] = pais_serializer.data
+            comunas_data.append(comuna_data)
+
+        return Response(comunas_data, status=status.HTTP_200_OK)
 
     def post(self, request):
         serializer = ComunaSerializers(data=request.data)
