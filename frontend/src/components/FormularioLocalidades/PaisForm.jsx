@@ -1,87 +1,49 @@
-import React, { useEffect, useState } from "react";
-import { verificarPais, verificarCodigoPais } from "../../utils/verificarDuplicados";
+import { useEffect, useState } from "react";
 import instance from "../../axiosConfig";
+import { verificarPais, verificarCodigoPais } from "../../utils/verificarDuplicados";
 
-const PaisForm = ({ register, errors, setValue, clearErrors, setPaisSeleccionado, codigoPaisSeleccionado, setCodigoPaisSeleccionado }) => {
-  const [paises, setPaises] = useState([]);
-  const [paisExiste, setPaisExiste] = useState(false);
-  const [existeCodigoPais, setExisteCodigoPais] = useState(false);
+const PaisForm = ({ setPaises, setPaisSeleccionado, setErrorDuplicado }) => {
+  const [nuevoPais, setNuevoPais] = useState('');  // Para el nuevo país ingresado
+  const [nuevoCodigoPais, setNuevoCodigoPais] = useState('');  // Para el código del país
 
   useEffect(() => {
-    // Obtener países al cargar el componente
-    instance.get("paises/")
-      .then((response) => setPaises(response.data))
-      .catch((error) => console.error("Error fetching countries:", error));
-  }, []);
+    const cargarPaises = async () => {
+      try {
+        const response = await instance.get("paises/");
+        setPaises(response.data);
+      } catch (error) {
+        console.error("Error fetching countries:", error);
+      }
+    };
+    cargarPaises();
+  }, [setPaises]);
 
-  const manejarSeleccionPais = (e) => {
-    const paisId = e.target.value;
-    if (paisId) {
-      const pais = paises.find(p => p.id === parseInt(paisId));
-      setPaisSeleccionado(pais.nombre_pais); // Actualizar el estado en FormularioLocalidades
-      setCodigoPaisSeleccionado(pais.codigo_pais); // Actualizar el código del país
-      setValue("nuevoPais", pais.nombre_pais);  
-      setValue("nuevoCodigoPais", pais.codigo_pais);
-      clearErrors("nuevoPais");
-      clearErrors("nuevoCodigoPais");
-    } else {
-      setPaisSeleccionado(""); // Restablecer si no se selecciona un país
-      setCodigoPaisSeleccionado(""); // Restablecer el código del país
-      setValue("nuevoPais", "");
-      setValue("nuevoCodigoPais", "");
-    }
+  const handleNuevoPaisChange = async (e) => {
+    const value = e.target.value;
+    setNuevoPais(value);
+    setErrorDuplicado((prev) => ({ ...prev, pais: false }));
+    
+    const existe = await verificarPais(value);  // Verifica si el país ya existe
+    setErrorDuplicado((prev) => ({ ...prev, pais: existe }));
+    
+    setPaisSeleccionado(value);  // Actualiza el país seleccionado
   };
 
-  const handlePaisChange = async (e) => {
-    const nuevoPais = e.target.value;
-    setValue("nuevoPais", nuevoPais);
-    const existe = await verificarPais(nuevoPais); // Utilizamos la función centralizada
-    setPaisExiste(existe);
+  const handleNuevoCodigoPaisChange = async (e) => {
+    const value = e.target.value;
+    setNuevoCodigoPais(value);
+    setErrorDuplicado((prev) => ({ ...prev, codigo: false }));
+    
+    const existe = await verificarCodigoPais(value);  // Verifica si el código ya existe
+    setErrorDuplicado((prev) => ({ ...prev, codigo: existe }));
   };
 
-  const handleCodigoPaisChange = async (e) => {
-    const nuevoCodigoPais = e.target.value;
-    setValue("nuevoCodigoPais", nuevoCodigoPais);
-    const existe = await verificarCodigoPais(nuevoCodigoPais); // Utilizamos la función centralizada
-    setExisteCodigoPais(existe);
+  return {
+    nuevoPais,  // Retornar el nuevo país
+    nuevoCodigoPais,  // Retornar el código del país
+    handleNuevoPaisChange,
+    handleNuevoCodigoPaisChange,
   };
-
-  return (
-    <div>
-      <label>Seleccionar País</label>
-      <select onChange={manejarSeleccionPais}>
-        <option value="">-- Selecciona un país --</option>
-        {paises.map((pais) => (
-          <option key={pais.id} value={pais.id}>
-            {pais.nombre_pais} {/* No es necesario formatear manualmente aquí */}
-          </option>
-        ))}
-      </select>
-
-      {/* Mostrar el código del país seleccionado */}
-      {codigoPaisSeleccionado && <p>Código País: {codigoPaisSeleccionado}</p>}
-
-      <label>Nombre del País</label>
-      <input
-        {...register("nuevoPais", { required: "El nombre del país es obligatorio" })}
-        placeholder="Nombre del País"
-        onChange={handlePaisChange}
-        disabled={codigoPaisSeleccionado !== ""}
-      />
-      {errors.nuevoPais && <span>{errors.nuevoPais.message}</span>}
-      {paisExiste && <span>El país ya está registrado</span>}
-
-      <label>Código del País</label>
-      <input
-        {...register("nuevoCodigoPais", { required: "El código del país es obligatorio" })}
-        placeholder="Código del País"
-        onChange={handleCodigoPaisChange}
-        disabled={codigoPaisSeleccionado !== ""}
-      />
-      {errors.nuevoCodigoPais && <span>{errors.nuevoCodigoPais.message}</span>}
-      {existeCodigoPais && <span>El código del país ya está registrado</span>}
-    </div>
-  );
 };
 
 export default PaisForm;

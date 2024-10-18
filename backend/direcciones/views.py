@@ -117,7 +117,7 @@ class ProvinciaViewSet(APIView):
             provincia_data = serializer.data
             provincia_data['region'] = region_serializer.data
             provincia_data['pais'] = pais_serializer.data
-            provincias_data.append(provincias_data)
+            provincias_data.append(provincia_data)
 
         return Response(provincias_data, status=status.HTTP_200_OK)
 

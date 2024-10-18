@@ -1,60 +1,83 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useForm } from "react-hook-form";
+import instance from "../axiosConfig";
 import FormatearDatos from './FormatearDatos';
 import PaisForm from "./FormularioLocalidades/PaisForm";
 import RegionForm from "./FormularioLocalidades/RegionForm";
-import instance from "../axiosConfig";
-import verificarDatosDuplicados from './verificarDatosDuplicados'; // Asegúrate de importar esta función si es externa.
+// Importamos las funciones individuales de verificación
+import { verificarPais, verificarCodigoPais, verificarRegion, verificarCodigoRegion, verificarProvincia, verificarComuna, verificarCiudad } from "../utils/verificarDuplicados";
+
+
+/**
+ * Componente que muestra un formulario para seleccionar localidades.
+ *
+ * Utiliza el hook `useLocalidades` para gestionar la lógica de selección y carga de datos.
+ *
+ * @props {Object} props - Las propiedades del componente.
+ * @props {Function} props.setPaisSeleccionado - Función para actualizar el país seleccionado en el componente padre.
+ * @props {Function} props.setRegionSeleccionada - Función para actualizar la región seleccionada en el componente padre.
+ */
+
 
 const FormularioLocalidades = () => {
   const { register, handleSubmit, setValue, clearErrors, formState: { errors }, reset } = useForm();
   const [error, setError] = useState('');
 
-  // Estado para el país y la región seleccionados y sus códigos
+  // Estados para país y código seleccionados
   const [paisSeleccionado, setPaisSeleccionado] = useState('');
   const [codigoPaisSeleccionado, setCodigoPaisSeleccionado] = useState('');
-  const [regionSeleccionado, setRegionSeleccionado] = useState('');
-  const [codigoRegionSeleccionado, setCodigoRegionSeleccionado] = useState('');
 
-  const [formData, setFormData] = useState({
-    nuevoPais: '',
-    nuevoCodigoPais: '',
-    nuevaRegion: '',
-    nuevoCodigoRegion: '',
-    nuevaProvincia: '',
-    nuevaComuna: '',
-    nuevaCiudad: '',
-  });
+  // Nueva función para verificar los duplicados
+  const verificarDatosDuplicados = async (datos) => {
+    const {
+      nuevoPais,
+      nuevoCodigoPais,
+      nuevaRegion,
+      nuevoCodigoRegion,
+      nuevaProvincia,
+      nuevaComuna,
+      nuevaCiudad
+    } = datos;
 
-  const [formateadosParaMostrar, setFormateadosParaMostrar] = useState({});
+    // Verificamos cada campo con las funciones específicas
+    const paisDuplicado = await verificarPais(nuevoPais);
+    const codigoPaisDuplicado = await verificarCodigoPais(nuevoCodigoPais);
+    const regionDuplicada = await verificarRegion(nuevaRegion);
+    const codigoRegionDuplicado = await verificarCodigoRegion(nuevoCodigoRegion);
+    const provinciaDuplicada = await verificarProvincia(nuevaProvincia);
+    const comunaDuplicada = await verificarComuna(nuevaComuna);
+    const ciudadDuplicada = await verificarCiudad(nuevaCiudad);
+
+    // Si alguna verificación detecta duplicado, retorna true
+    return (
+      paisDuplicado ||
+      codigoPaisDuplicado ||
+      regionDuplicada ||
+      codigoRegionDuplicado ||
+      provinciaDuplicada ||
+      comunaDuplicada ||
+      ciudadDuplicada
+    );
+  };
 
   const onSubmit = async (data) => {
     try {
-      let formateadosParaServidor = {};
+      const formateadosParaServidor = FormatearDatos(data);
 
-      // Si no hay un país seleccionado, agregar el nuevo país
-      if (!paisSeleccionado) {
-        formateadosParaServidor.nuevoPais = data.nuevoPais;
-        formateadosParaServidor.nuevoCodigoPais = data.nuevoCodigoPais;
+      // Verificamos duplicados usando la nueva función
+      const datosDuplicados = await verificarDatosDuplicados(formateadosParaServidor);
+      if (datosDuplicados) {
+        setError("Los datos ingresados ya existen en la base de datos.");
+        return;
       }
 
-      // Si no hay una región seleccionada, agregar la nueva región
-      if (!regionSeleccionado) {
-        formateadosParaServidor.nuevaRegion = data.nuevaRegion;
-        formateadosParaServidor.nuevoCodigoRegion = data.nuevoCodigoRegion;
-      }
+      // Si no hay duplicados, enviar los datos al servidor
+      await instance.post("localidades/", formateadosParaServidor);
 
-      if (Object.keys(formateadosParaServidor).length > 0) {
-        // Petición al servidor con los datos ya formateados
-        await instance.post("localidades/", formateadosParaServidor);
-      }
-
-      // Limpiar los campos después de enviar
+      // Limpiar los campos y estados después de enviar
       reset();
       setPaisSeleccionado('');
       setCodigoPaisSeleccionado('');
-      setRegionSeleccionado('');
-      setCodigoRegionSeleccionado('');
       setError('');
     } catch (error) {
       console.error("Error submitting form:", error);
@@ -62,55 +85,27 @@ const FormularioLocalidades = () => {
     }
   };
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prevData) => ({
-      ...prevData,
-      [name]: value,
-    }));
-  };
-
-  useEffect(() => {
-    // Formatear los datos ingresados para mostrar y validar duplicados
-    const { formateadosParaMostrar, formateadosParaServidor } = FormatearDatos(formData);
-
-    // Validación en tiempo real: verificar si los datos ya existen
-    const datosDuplicados = verificarDatosDuplicados(formateadosParaServidor);  // Asegúrate de definir o importar esta función
-    if (datosDuplicados) {
-      setError("Los datos ingresados ya existen en la base de datos");
-    } else {
-      setError(null);
-      setFormateadosParaMostrar(formateadosParaMostrar);
-    }
-
-  }, [formData]);
-
   return (
     <form onSubmit={handleSubmit(onSubmit)}>
-      {/* Incorporar el componente PaisForm */}
+      {/* Componente PaisForm */}
       <PaisForm
         register={register}
         errors={errors}
         setValue={setValue}
-        onChange={handleInputChange}  // Asignamos handleInputChange aquí para manejar cambios
-        nuevoPais={formateadosParaMostrar.nuevoPais || ''}
         clearErrors={clearErrors}
         setPaisSeleccionado={setPaisSeleccionado}
-        codigoPaisSeleccionado={codigoPaisSeleccionado}
         setCodigoPaisSeleccionado={setCodigoPaisSeleccionado}
         paisSeleccionado={paisSeleccionado}
+        codigoPaisSeleccionado={codigoPaisSeleccionado}
       />
 
-      {/* Incorporar el componente RegionForm */}
+      {/* Componente RegionForm, recibe el país seleccionado */}
       <RegionForm
         register={register}
         errors={errors}
         setValue={setValue}
         clearErrors={clearErrors}
-        setRegionSeleccionado={setRegionSeleccionado}
-        codigoRegionSeleccionado={codigoRegionSeleccionado}
-        setCodigoRegionSeleccionado={setCodigoRegionSeleccionado}
-        setPaisSeleccionado={setPaisSeleccionado}
+        paisSeleccionado={paisSeleccionado} // Pasamos el país seleccionado
         setCodigoPaisSeleccionado={setCodigoPaisSeleccionado}
       />
 
